@@ -1,6 +1,8 @@
 package com.asim.frames;
 
 import com.asim.Constants;
+import com.asim.task.CompressTask;
+import com.asim.task.DecompressTask;
 import com.asim.util.MatrixUtil;
 
 import javax.imageio.ImageIO;
@@ -12,6 +14,7 @@ import java.awt.image.BufferedImage;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.util.Random;
+import java.util.concurrent.ExecutionException;
 
 /**
  * Created by asim on 8/26/16.
@@ -22,6 +25,8 @@ public class MainFrame extends JFrame{
     private BufferedImage originalImage;
     private BufferedImage compressedImage;
     private BufferedImage reconstructedImage;
+
+    private JLabel statusField;
 
     public MainFrame(String name){
 
@@ -41,9 +46,9 @@ public class MainFrame extends JFrame{
 
         label = new JLabel(name);
         label.setFont(new Font("serif", Font.BOLD, 20));
-        c.insets = new Insets(25, 0, 0, 0);
-        c.ipadx = 40;
-        c.ipady = 40;
+        c.insets = new Insets(10, 0, 0, 0);
+        c.ipadx = 10;
+        c.ipady = 10;
         c.gridx = 0;
         c.gridy = 0;
         c.gridwidth = 5;
@@ -52,8 +57,8 @@ public class MainFrame extends JFrame{
         button = new JButton("Upload Image");
         button.addActionListener(new UploadImageListener(pane));
         button.setFont(font);
-        c.ipadx = 40;
-        c.ipady = 40;
+        c.ipadx = 10;
+        c.ipady = 10;
         c.gridx = 0;
         c.gridy = 1;
         c.gridwidth = 5;
@@ -84,6 +89,17 @@ public class MainFrame extends JFrame{
         c.gridy = 2;
         c.anchor = GridBagConstraints.LINE_END;
         pane.add(label, c);
+
+        statusField = new JLabel();
+        statusField.setFont(new Font("serif", Font.ITALIC, 20));
+        c.insets = new Insets(50, 50, 0, 0);
+        c.ipadx = 10;
+        c.ipady = 10;
+        c.gridx = 0;
+        c.gridy = 4;
+        c.gridwidth = 5;
+        c.anchor = GridBagConstraints.LINE_START;
+        pane.add(statusField, c);
 
         button = new JButton("Compress Image");
         button.addActionListener(new ImageActionListener(pane));
@@ -212,30 +228,16 @@ public class MainFrame extends JFrame{
         }
     }
 
-    private class ImageActionListener implements ActionListener, PropertyChangeListener{
+    private class ImageActionListener implements ActionListener{
 
         private Container pane;
-        private ProgressMonitor progressMonitor;
-        private Task task;
-        private JTextArea taskOutput;
 
         public ImageActionListener(Container pane){
 
             this.pane = pane;
-            taskOutput = new JTextArea(5, 20);
-            taskOutput.setMargin(new Insets(5,5,5,5));
-            taskOutput.setEditable(false);
         }
         public void actionPerformed(ActionEvent e) {
 
-            MyProgressMonitor.createAndShowGUI();
-//            progressMonitor = new ProgressMonitor(MainFrame.this,
-//                    "Compressing Image",
-//                    "", 0, 100);
-//            progressMonitor.setProgress(progressMonitor.getMinimum());
-//            task = new Task();
-//            task.addPropertyChangeListener(this);
-//            task.execute();
             revalidate();
             JLabel label = null;
             GridBagConstraints c = new GridBagConstraints();
@@ -243,14 +245,14 @@ public class MainFrame extends JFrame{
 
                 if(originalImage != null) {
 
-                    compressedImage = MatrixUtil.compress(originalImage);
+                    CompressTask task = new CompressTask(pane, originalImage, statusField);
+                    task.execute();
 
-                    label = new JLabel(new ImageIcon(compressedImage.getScaledInstance(200, 200, Image.SCALE_SMOOTH)));
-                    c.gridx = 2;
-                    c.gridwidth = 1;
-                    c.gridy = 2;
-                    c.anchor = GridBagConstraints.CENTER;
-                    c.insets = new Insets(50, 50, 0, 50);
+                    try {
+                        compressedImage = task.get();
+                    } catch (InterruptedException | ExecutionException e1) {
+                        e1.printStackTrace();
+                    }
                 }else{
 
                     JOptionPane.showMessageDialog(pane,
@@ -262,14 +264,14 @@ public class MainFrame extends JFrame{
 
                 if(compressedImage != null) {
 
-                    reconstructedImage = MatrixUtil.decompress(compressedImage);
+                    DecompressTask task = new DecompressTask(compressedImage, statusField, pane);
+                    task.execute();
 
-                    label = new JLabel(new ImageIcon(reconstructedImage.getScaledInstance(200, 200, Image.SCALE_SMOOTH)));
-                    c.gridx = 3;
-                    c.gridy = 2;
-                    c.gridwidth = 1;
-                    c.anchor = GridBagConstraints.LINE_END;
-                    c.insets = new Insets(50, 50, 0, 0);
+                    try {
+                        reconstructedImage = task.get();
+                    } catch (InterruptedException | ExecutionException e1) {
+                        e1.printStackTrace();
+                    }
                 }else{
 
                     JOptionPane.showMessageDialog(pane,
@@ -277,84 +279,6 @@ public class MainFrame extends JFrame{
                             "No image selected",
                             JOptionPane.ERROR_MESSAGE);
                 }
-            }
-            if(label != null) {
-                //c.weighty = 1.0;   //request any extra vertical space
-                pane.add(label, c);
-            }
-
-            if(compressedImage != null){
-
-                label = new JLabel("Compressed image of size 14 x 14");
-                label.setFont(new Font("serif", Font.BOLD, 16));
-                c.gridx = 2;
-                c.gridy = 3;
-                c.anchor = GridBagConstraints.CENTER;
-                c.insets = new Insets(50, 0, 0, 50);
-                c.gridwidth = 1;
-
-                pane.add(label, c);
-            }
-            if(reconstructedImage != null){
-
-                label = new JLabel("Reconstructed image of size 14 x 14");
-                label.setFont(new Font("serif", Font.BOLD, 14));
-                c.gridx = 3;
-                c.gridy = 3;
-                c.anchor = GridBagConstraints.LINE_END;
-                c.insets = new Insets(50, 0, 0, 50);
-                c.gridwidth = 2;
-
-                pane.add(label, c);
-            }
-            revalidate();
-        }
-
-        @Override
-        public void propertyChange(PropertyChangeEvent evt) {
-
-            if ("progress".equals(evt.getPropertyName())) {
-                int progress = (Integer) evt.getNewValue();
-                progressMonitor.setProgress(progress);
-                String message =
-                        String.format("Completed %d%%.\n", progress);
-                progressMonitor.setNote(message);
-                taskOutput.append(message);
-                if (progressMonitor.isCanceled() || task.isDone()) {
-                    Toolkit.getDefaultToolkit().beep();
-                    if (progressMonitor.isCanceled()) {
-                        task.cancel(true);
-                        taskOutput.append("Task canceled.\n");
-                    } else {
-                        taskOutput.append("Task completed.\n");
-                    }
-                }
-            }
-        }
-
-        class Task extends SwingWorker<Void, Void> {
-            @Override
-            public Void doInBackground() {
-                Random random = new Random();
-                int progress = 0;
-                setProgress(progressMonitor.getMinimum());
-                try {
-                    Thread.sleep(1000);
-                    while (progress < 100 && !isCancelled()) {
-                        //Sleep for up to one second.
-                        Thread.sleep(random.nextInt(1000));
-                        //Make random progress.
-                        progress += random.nextInt(10);
-                        setProgress(Math.min(progress, 100));
-                    }
-                } catch (InterruptedException ignore) {}
-                return null;
-            }
-
-            @Override
-            public void done() {
-                Toolkit.getDefaultToolkit().beep();
-                progressMonitor.setProgress(progressMonitor.getMaximum());
             }
         }
     }

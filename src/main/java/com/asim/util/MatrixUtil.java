@@ -215,7 +215,7 @@ public class MatrixUtil {
         System.out.println("end");
     }
 
-    private static SimpleMatrix convertToMatrix(SimpleMatrix vector){
+    public static SimpleMatrix convertToMatrix(SimpleMatrix vector){
 
         double[][] imagePixels = new double[28][28];
         for(int i=0, k = 0;i < 28;i++){
