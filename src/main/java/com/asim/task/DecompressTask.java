@@ -94,8 +94,8 @@ public class DecompressTask extends SwingWorker<BufferedImage, String>{
                     c.insets = new Insets(50, 50, 0, 0);
                     pane.add(label, c);
 
-                    label = new JLabel("Reconstructed image of size 14 x 14");
-                    label.setFont(new Font("serif", Font.BOLD, 14));
+                    label = new JLabel("Reconstructed image of size 28 x 28");
+                    label.setFont(new Font("serif", Font.BOLD, 16));
                     c.gridx = 3;
                     c.gridy = 3;
                     c.anchor = GridBagConstraints.LINE_END;
